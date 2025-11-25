@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>색깔 성격 유형 테스트</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "맑은 고딕", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f7;
+    }
+    .ct-container {
+      max-width: 640px;
+      margin: 2rem auto;
+      padding: 1.5rem;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    }
+    .ct-title { font-size: 1.6rem; text-align: center; margin-bottom: 0.5rem; }
+    .ct-subtitle {
+      font-size: 0.9rem; text-align: center; color: #555;
+      margin-bottom: 1rem; line-height: 1.6;
+    }
+    .ct-progress { text-align: right; font-size: 0.85rem; color: #666; margin-bottom: 0.75rem; }
+    .ct-color-grid {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.8rem; margin-bottom: 1.25rem;
+    }
+    .ct-color-item { cursor: pointer; text-align: center; font-size: 0.85rem; }
+    .ct-color-circle {
+      width: 58px; height: 58px; border-radius: 50%; margin: 0 auto 0.35rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.18); transition: 0.08s;
+    }
+    .ct-color-item:not(.ct-color-selected):hover .ct-color-circle {
+      transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.22);
+    }
+    .ct-color-selected .ct-color-circle { opacity: 0.4; }
+    .ct-order-badge {
+      position: absolute; top:0; bottom:0; left:0; right:0;
+      display:flex; align-items:center; justify-content:center;
+      font-weight:700; font-size:1rem; color:#fff; text-shadow:0 0 5px rgba(0,0,0,0.6);
+    }
+    .ct-center { text-align: center; }
+    .ct-btn {
+      border:none; border-radius:999px; padding:0.8rem 1.6rem; font-size:0.95rem;
+      cursor:pointer; background:#4c6fff; color:#fff; transition:0.15s;
+    }
+    .ct-btn:hover:not(:disabled) { background:#3750e0; transform:translateY(-1px); }
+    .ct-btn:disabled { opacity:0.45; cursor:default; }
+    .ct-result-badge {
+      width:80px; height:80px; border-radius:50%; margin:0 auto 1rem; border:4px solid #eee;
+    }
+    .ct-result-title { text-align:center; font-size:1.25rem; margin-bottom:0.25rem; }
+    .ct-result-keyword { text-align:center; font-size:0.9rem; color:#777; margin-bottom:0.9rem; }
+    .ct-result-body { font-size:0.95rem; line-height:1.7; color:#444; white-space:pre-line; }
+    .ct-small-note { font-size:0.8rem; text-align:center; color:#888; margin-top:1rem; }
+  </style>
+</head>
+
+<body>
+  <div class="ct-container">
+    <h1 class="ct-title">색깔 성격 유형 테스트</h1>
+    <p class="ct-subtitle">12가지 색을 지금 끌리는 순서대로 클릭해줘. 다 고르면 결과 확인 가능!</p>
+
+    <!-- 시작 화면 -->
+    <div id="ct-start">
+      <div class="ct-center"><button class="ct-btn" id="ct-start-btn">시작하기</button></div>
+    </div>
+
+    <!-- 테스트 화면 -->
+    <div id="ct-test" style="display:none;">
+      <div class="ct-progress" id="ct-progress"></div>
+      <div class="ct-color-grid" id="ct-color-grid"></div>
+      <div class="ct-center"><button class="ct-btn" id="ct-result-btn" disabled>결과 알아보기</button></div>
+    </div>
+
+    <!-- 결과 화면 -->
+    <div id="ct-result" style="display:none;">
+      <div class="ct-result-badge" id="ct-result-badge"></div>
+      <h2 class="ct-result-title" id="ct-result-title"></h2>
+      <div class="ct-result-keyword" id="ct-result-keyword"></div>
+      <div class="ct-result-body" id="ct-result-body"></div>
+      <div class="ct-center"><button class="ct-btn" id="ct-restart-btn">다시 테스트하기</button></div>
+      <p class="ct-small-note">가볍게 참고용이야. 너무 진지하게 생각하지 않아도 돼.</p>
+    </div>
+  </div>
+
+  <script>
+    // 12개 색
+    const colors = [
+      { id:"red", name:"레드", hex:"#ff4b4b", type:"active" },
+      { id:"orange", name:"오렌지", hex:"#ff8a3d", type:"active" },
+      { id:"yellow", name:"옐로우", hex:"#ffd64b", type:"bright" },
+      { id:"lime", name:"라임", hex:"#c6e65b", type:"bright" },
+      { id:"green", name:"그린", hex:"#4bbf7d", type:"calm" },
+      { id:"mint", name:"민트", hex:"#6fd7c0", type:"calm" },
+      { id:"blue", name:"블루", hex:"#4b7dff", type:"deep" },
+      { id:"navy", name:"네이비", hex:"#30406b", type:"deep" },
+      { id:"purple", name:"퍼플", hex:"#9b59ff", type:"creative" },
+      { id:"pink", name:"핑크", hex:"#ff6fa8", type:"creative" },
+      { id:"brown", name:"브라운", hex:"#a46b45", type:"stable" },
+      { id:"gray", name:"그레이", hex:"#8a8f99", type:"stable" }
+    ];
+
+    // 심리 유형 설명
+    const resultTypes = {
+      active: {
+        title: "에너지형",
+        keyword: "결단력 · 추진력 · 직진",
+        desc: "레드 · 오렌지가 앞쪽이라면 지금 당신은 ‘속도, 추진력’이 중요한 타입.\n빠르게 결정하고 행동하는 스타일."
+      },
+      bright: {
+        title: "유쾌형",
+        keyword: "호기심 · 긍정 · 가벼움",
+        desc: "옐로우 · 라임이 우선이면 ‘재미, 가볍게 즐김’이 중요한 상태.\n사람 분위기를 밝게 만듦."
+      },
+      calm: {
+        title: "배려형",
+        keyword: "안정감 · 따뜻함 · 조화",
+        desc: "그린 · 민트가 앞쪽이면 ‘편안함과 조화’를 중시.\n타인을 자연스레 돌보는 사람."
+      },
+      deep: {
+        title: "분석형",
+        keyword: "신중함 · 깊이 · 집중력",
+        desc: "블루 · 네이비가 우선이라면 ‘차분함과 집중’을 중시.\n생각 깊고 신뢰감 있음."
+      },
+      creative: {
+        title: "영감형",
+        keyword: "감성 · 창의력 · 독창성",
+        desc: "퍼플 · 핑크가 앞쪽이면 ‘표현, 영감’이 중요.\n새로운 방식 좋아함."
+      },
+      stable: {
+        title: "안정추구형",
+        keyword: "신뢰 · 현실적 · 균형감",
+        desc: "브라운 · 그레이가 우선이라면 안정과 현실 감각을 중시.\n묵직한 신뢰를 주는 타입."
+      }
+    };
+
+    let selectedOrder = [];
+    const start = document.getElementById("ct-start");
+    const test = document.getElementById("ct-test");
+    const result = document.getElementById("ct-result");
+    const grid = document.getElementById("ct-color-grid");
+    const progress = document.getElementById("ct-progress");
+    const resultBtn = document.getElementById("ct-result-btn");
+    const resultBadge = document.getElementById("ct-result-badge");
+    const resultTitle = document.getElementById("ct-result-title");
+    const resultKeyword = document.getElementById("ct-result-keyword");
+    const resultBody = document.getElementById("ct-result-body");
+
+    document.getElementById("ct-start-btn").onclick = () => {
+      start.style.display = "none";
+      test.style.display = "block";
+      renderColors();
+      updateProgress();
+    };
+
+    function renderColors() {
+      grid.innerHTML = "";
+      colors.forEach(c => {
+        const selIndex = selectedOrder.indexOf(c.id);
+        const item = document.createElement("div");
+        item.className = "ct-color-item" + (selIndex !== -1 ? " ct-color-selected" : "");
+        item.innerHTML = `
+          <div class="ct-color-circle" style="background:${c.hex}">
+            ${selIndex !== -1 ? `<div class="ct-order-badge">${selIndex+1}</div>` : ""}
+          </div>
+          <span class="ct-color-name">${c.name}</span>
+        `;
+        if (selIndex === -1) {
+          item.onclick = () => { if (selectedOrder.length < 12) {
+            selectedOrder.push(c.id); renderColors(); updateProgress();
+          }};
+        }
+        grid.appendChild(item);
+      });
+    }
+
+    function updateProgress() {
+      progress.textContent = `${selectedOrder.length} / 12 선택됨`;
+      resultBtn.disabled = selectedOrder.length !== 12;
+    }
+
+    resultBtn.onclick = () => {
+      test.style.display = "none";
+      result.style.display = "block";
+
+      // 가장 먼저 선택된 색 기준 → 첫 번째 요소
+      const topColorId = selectedOrder[0];
+      const topColor = colors.find(c => c.id === topColorId);
+      const type = resultTypes[topColor.type];
+
+      resultBadge.style.background = topColor.hex;
+      resultTitle.textContent = `${topColor.name} 타입 (${type.title})`;
+      resultKeyword.textContent = type.keyword;
+      resultBody.textContent = type.desc;
+    };
+
+    document.getElementById("ct-restart-btn").onclick = () => {
+      result.style.display = "none";
+      start.style.display = "block";
+      selectedOrder = [];
+    };
+  </script>
+</body>
+</html>
